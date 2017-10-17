@@ -1,8 +1,8 @@
 import React from 'react'
 import { render } from 'react-dom'
-import Home from './components/Home'
+import Upload from './components/Upload'
 
 render(
-  <Home />,
+  <Upload />,
   document.getElementById('app')
 );

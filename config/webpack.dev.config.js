@@ -5,13 +5,16 @@ const baseConfig = require('./webpack.base.config');
 module.exports = merge(baseConfig, {
   devtool: 'source-map',
   devServer: {
-      disableHostCheck: true
-    },
-  plugins: {
+    disableHostCheck: true,
+    hot: true,
+    historyApiFallback: true
+  },
+  plugins: [
+    new webpack.HotModuleReplacementPlugin(),
     new webpack.DefinePlugin({
       'process.env': {
-        NODE_ENV: 'develop'
+        NODE_ENV: JSON.stringify('develop')
       }
     })
-  }
+  ]
 });

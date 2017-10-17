@@ -1,9 +1,11 @@
 const webapck = require('webpack');
-const path = require('paht');
+const path = require('path');
+const ExtractTextPlugin = require('extract-text-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 //连接相对路径
 const joinPath = relativePath => {
-  return relativePath ? path.resolve(`.././${relativePath}`) : '';
+  return relativePath ? path.resolve(__dirname, `.././${relativePath}`) : '';
 }
 //判断是否为开发环境
 const isProduct = process.env.NODE_ENV === 'production';
@@ -11,10 +13,10 @@ const isProduct = process.env.NODE_ENV === 'production';
 module.exports = {
   entry: {
     'main': path.resolve('app/index.jsx'),
-    'vendor': ['react', 'react-dom', 'fetch']
+    'vendor': ['react', 'react-dom', 'whatwg-fetch']
   },
   output: {
-    path: joinPath('static'),
+    path: joinPath('dist'),
     filename: isProduct ? 'js/[name].[hash:8].js' : 'js/[name].js'
   },
   resolve: {
@@ -23,11 +25,12 @@ module.exports = {
       path.resolve('app'),
       'node_modules'
     ]
-  }
-  modules: {
+  },
+  module: {
     rules: [
       {
         test: /\.(js|jsx)/,
+        exclude: /node_modules/,
         use: {
           loader: 'babel-loader',
           query: {
@@ -51,12 +54,31 @@ module.exports = {
       },
       {
         test: /\.(png|jep?g|svg)$/i,
-        options: {
-          limit: 8129,
-          name: 'imgs/[name].[hash].[ext]',
-          publicPath: '../',
+        use: {
+          loader: 'url-loader',
+          options: {
+            limit: 8129,
+            name: 'imgs/[name].[hash].[ext]',
+            publicPath: '../',
+          }
         }
       }
     ]
-  }
+  },
+  plugins: [
+    //css文件抽取后打包
+    new ExtractTextPlugin({
+      filename: isProduct ? 'css/[name].[hash:8].css' : 'css/[name].css'
+    }),
+    //将打包文件插入到模板index页面中
+    new HtmlWebpackPlugin({
+      filename: isProduct ? joinPath('dist') + 'index.html' : 'index.html',
+      template: joinPath('app/views/template.html'),
+      inject: 'body',
+      minify: {
+        removeComments: true,
+        collapseWhitespace: true
+      }
+    })
+  ]
 }

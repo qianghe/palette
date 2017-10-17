@@ -1,0 +1,7 @@
+@import './../common.scss';
+
+h1{
+  @extend %row-align-center;
+  margin: 50px auto;
+  -webkit-mask-image: -webkit-gradient(linear, 0 0, 0 100%, from(rgba(0, 0, 0, 0.9)), color-stop(40%, rgba(0, 0, 0, 0.5)),to(rgba(0, 0, 0, 0)));
+}
