@@ -11,10 +11,11 @@ const joinPath = relativePath => {
 const isProduct = process.env.NODE_ENV === 'production';
 
 module.exports = {
-  entry: {
-    'main': path.resolve('app/index.jsx'),
-    'vendor': ['react', 'react-dom', 'whatwg-fetch']
-  },
+  entry: [
+    "babel-polyfill",
+    "react-hot-loader/patch",
+    path.resolve('app/index.jsx'),
+  ],
   output: {
     path: joinPath('dist'),
     filename: isProduct ? 'js/[name].[hash:8].js' : 'js/[name].js'
@@ -34,8 +35,8 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           query: {
-            cacheDirectory: false,
-          }
+            cacheDirectory: false
+          },
         }
       },
       {

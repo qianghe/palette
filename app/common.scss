@@ -22,5 +22,36 @@ input{
 
 %col-align-center{
   display: flex;
+  flex-flow: column;
   align-items: center;
+}
+
+%block-align-center{
+  position: absolute;
+  display: block;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+%inherit-parent-container{
+  width: 100%;
+  height: 100%;
+}
+
+@mixin triangle($direction, $width, $color){
+  border: $width solid transparent;
+  $temp: '';
+
+  @if $direction == up {
+    $temp: bottom;
+  } @else if $direction == bottom {
+    $temp: up;
+  } @else if $direction == left {
+    $temp: left;
+  } @else {
+    $temp: right;
+  }
+
+  border-#{$temp}: $width solid $color;
 }

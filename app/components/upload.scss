@@ -1,7 +1,76 @@
 @import './../common.scss';
 
+$triangleWidth: 10px;
+
+.container {
+  padding: 50px;
+  > * {
+    margin-bottom: 50px;
+  }
+  @extend %col-align-center;
+}
 h1{
-  @extend %row-align-center;
-  margin: 50px auto;
   -webkit-mask-image: -webkit-gradient(linear, 0 0, 0 100%, from(rgba(0, 0, 0, 0.9)), color-stop(40%, rgba(0, 0, 0, 0.5)),to(rgba(0, 0, 0, 0)));
+}
+
+.upload{
+  position: relative;
+  width: 200px;
+  height: 200px;
+  border-radius: 2px;
+  border: 1px dashed #a0a0a0;
+  cursor: pointer;
+
+  > span {
+    @extend %block-align-center;
+    font-size: 50px;
+    color: #a0a0a0;
+  }
+
+  > input{
+    @extend %inherit-parent-container;
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+  }
+
+  .preview{
+    @extend %inherit-parent-container;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+  }
+}
+
+.tip{
+  position: relative;
+  margin-top: -40px;
+  padding: 2px 4px;
+  background-color: #000;
+  border-radius: 3px;
+  color: #fff;
+  font-size: 12px;
+
+  &::after{
+    content: '';
+    display: block;
+    position: absolute;
+    top: calc(-#{$triangleWidth} * 2);
+    left: calc(50% - #{$triangleWidth}/2);
+    @include triangle(up, 10px, #000);
+  }
+}
+
+.startBtn{
+  padding: 8px 10px;
+  background-color: #a0a0a0;
+  color: #fff;
+  box-shadow: 2px 0 3px 0 #a0a0a0;
+  cursor: pointer;
+
+  &:hover{
+    background-color: #F08080;
+    box-shadow: 2px 0 3px 0 #F08080;
+  }
 }

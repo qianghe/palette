@@ -6,6 +6,10 @@ const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const baseConfig = require('./webpack.base.config');
 
 module.exports = merge(baseConfig, {
+  entry: {
+    'main': path.resolve('app/index.jsx'),
+    'vendor': ['react', 'react-dom', 'whatwg-fetch']
+  },
   output: {
     path: path.resolve(__dirname, '.././app/dist'),
     publicPath : '',
