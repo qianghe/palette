@@ -5,7 +5,6 @@ class Upload extends Component {
   state = {
     isFetching: false,
     hasUpload: true,
-    hasPreview: false,
     imgSrc: null,
   }
   selectImg= (e) => {
@@ -25,13 +24,15 @@ class Upload extends Component {
     reader.onload = (e) => {
       that.setState({
         imgSrc: e.target.result,
-        hasPreview: true,
       });
     }
   }
+  startAnalysis= () => {
+    console.log('start to post the picture to server side.');
+  }
   render() {
-    const { imgSrc, hasPreview } = this.state;
-    const showStyle = { display: hasPreview ? 'none' : 'block'};
+    const { imgSrc } = this.state;
+    const showStyle = { display: imgSrc ? 'none' : 'block'};
 
     return (
       <div className="container">
@@ -42,7 +43,7 @@ class Upload extends Component {
           <input type="file" onChange={(e)=>this.selectImg(e)}/>
         </section>
         <section className="tip">click to select a pic</section>
-        <div className="startBtn">start to analysis</div>
+        <div className="startBtn" style={showStyle} onClick={this.startAnalysis}>start to analysis</div>
       </div>
     )
   }
