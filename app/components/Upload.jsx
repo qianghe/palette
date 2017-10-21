@@ -6,7 +6,23 @@ class Upload extends Component {
     isFetching: false,
     hasUpload: true,
     imgSrc: null,
+    file: null,
   }
+  // postPic = () => {
+  //   //传递图片
+  //   const data = new FormData()
+  //   data.append('file', file);
+  //   data.append('user', 'heqiang');
+  //
+  //   const url = 'hqiswonder.com.cn:3000/upload';
+  //   fetch(url, {
+  //     method: 'POST',
+  //     body: data
+  //   }).then(response => response.json())
+  //   .then((data) => {
+  //     console.log('data', data);
+  //   });
+  // }
   selectImg= (e) => {
     const file = e.target.files[0];
     const that = this;
@@ -24,26 +40,43 @@ class Upload extends Component {
     reader.onload = (e) => {
       that.setState({
         imgSrc: e.target.result,
+        file,
       });
     }
   }
   startAnalysis= () => {
-    console.log('start to post the picture to server side.');
+    console.log('start to anlysis....');
+    const img = this.refs.selectedImg;
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0 , 0);
+    var imgData = ctx.getImageData(0, 0, img.width, img.height);
+
+    //使用web worker进行数据处理
+    var worker =new Worker("../../libs/dealdata.js");
+    worker.postMessage(imgData);     //向worker发送数据
+    worker.onmessage =function(evt){     //接收worker传过来的数据函数
+     console.log(evt.data);              //输出worker发送来的数据
+    }
   }
   render() {
     const { imgSrc } = this.state;
-    const showStyle = { display: imgSrc ? 'none' : 'block'};
 
     return (
       <div className="container">
         <h1>Palette Algorithm</h1>
         <section className="upload">
-          <span style={showStyle}>+</span>
-          <div className="preview" style={{ backgroundImage: `url(${imgSrc})` }}/>
+          <span style={{ display: imgSrc ? 'none' : 'block' }}>+</span>
+          <div className="preview">
+            <img src={imgSrc} ref="selectedImg"/>
+          </div>
           <input type="file" onChange={(e)=>this.selectImg(e)}/>
         </section>
-        <section className="tip">click to select a pic</section>
-        <div className="startBtn" style={showStyle} onClick={this.startAnalysis}>start to analysis</div>
+        <section className="tip">click to select a picture</section>
+        <div className="startBtn" style={{ display: imgSrc ? 'block' : 'none' }} onClick={this.startAnalysis}>start to analysis</div>
       </div>
     )
   }

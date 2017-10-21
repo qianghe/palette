@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "webpack-dev-server --config config/webpack.dev.config.js --inline --progress --colors --host 127.0.0.1 --port 8081",
+    "dev": "webpack-dev-server --config config/webpack.dev.config.js --inline --progress --colors --host 127.0.0.1 --port 8080",
     "build": "webpack --config config/webpack.prod.config.js"
   },
   "author": "heqiang",

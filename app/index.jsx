@@ -16,6 +16,5 @@ const renderCom = App => {
 renderCom(Upload);
 
 if (module.hot) {
-  console.log('come in', module);
   module.hot.accept('./components/Upload', () => { renderCom(Upload); })
 }
