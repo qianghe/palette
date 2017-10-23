@@ -7,6 +7,7 @@ class Upload extends Component {
     hasUpload: true,
     imgSrc: null,
     file: null,
+    analyData: [],
   }
   // postPic = () => {
   //   //传递图片
@@ -46,6 +47,7 @@ class Upload extends Component {
   }
   startAnalysis= () => {
     console.log('start to anlysis....');
+    const that = this;
     const img = this.refs.selectedImg;
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
@@ -60,10 +62,13 @@ class Upload extends Component {
     worker.postMessage(imgData);     //向worker发送数据
     worker.onmessage =function(evt){     //接收worker传过来的数据函数
      console.log(evt.data);              //输出worker发送来的数据
+      that.setState({
+        analyData: evt.data
+      })
     }
   }
   render() {
-    const { imgSrc } = this.state;
+    const { imgSrc, analyData } = this.state;
 
     return (
       <div className="container">
@@ -77,6 +82,17 @@ class Upload extends Component {
         </section>
         <section className="tip">click to select a picture</section>
         <div className="startBtn" style={{ display: imgSrc ? 'block' : 'none' }} onClick={this.startAnalysis}>start to analysis</div>
+        <ul style = {{ display: analyData.length ? 'flex' : 'none' }}>
+          {
+            analyData.map((data, index) =>
+              <li
+                key={`color_item_${index}`}
+                style={{ backgroundColor: data.imageColorString }}>
+                {`${(data.percentage*100).toFixed(2)}%`}
+              </li>
+            )
+          }
+        </ul>
       </div>
     )
   }

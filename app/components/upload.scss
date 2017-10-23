@@ -38,7 +38,7 @@ h1{
   .preview{
     @extend %inherit-parent-container;
     @extend %row-align-center;
-    
+
     > img{
       width: auto;
       height: 100%;
@@ -75,5 +75,21 @@ h1{
   &:hover{
     background-color: #F08080;
     box-shadow: 2px 0 3px 0 #F08080;
+  }
+}
+
+ul{
+  display: flex;
+  flex-wrap: wrap;
+  color: #fff;
+
+  li{
+    width: 60px;
+    padding: 5px;
+    margin-right: 8px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
