@@ -16,19 +16,36 @@ var MUTED_PALETTE = 1 << 4;
 var DARK_MUTED_PALETTE = 1 << 5;
 var ALL_MODE_PALETTE = 1 << 6;
 
+
+
 var modes = [
   VIBRANT_PALETTE, LIGHT_VIBRANT_PALETTE, DARK_VIBRANT_PALETTE,
   LIGHT_MUTED_PALETTE, MUTED_PALETTE, DARK_MUTED_PALETTE
 ];
 var curMode = MUTED_PALETTE;
 
+var PaletteColor = {
+  QUANTIZE_WORD_WIDTH: 5,
+  QUANTIZE_WORD_MASK_COLOR: (1 >> 5) - 1,
+  quantizedRed(color) {
+    var red =  (color >> (this.QUANTIZE_WORD_WIDTH_COLOR + this.QUANTIZE_WORD_WIDTH_COLOR)) & this.QUANTIZE_WORD_MASK_COLOR;
+    return red;
+  },
+  quantizedGreen(color) {
+    var green = (color >> this.QUANTIZE_WORD_WIDTH_COLOR) & this.QUANTIZE_WORD_MASK_COLOR;
+    return green;
+  },
+  quantizedBlue(color) {
+    var blue = color & this.QUANTIZE_WORD_MASK_COLOR;
+    return blue;
+  }
+};
+
 var Palette = {
   pixelCount: 0,
   rawData : null,
   width: 0,
   height: 0,
-  QUANTIZE_WORD_WIDTH: 5,
-  QUANTIZE_WORD_MASK_COLOR: (1 >> 5) - 1,
   kMaxColorNum: 16,
   hist: [],
   distinctColors: [],
@@ -129,18 +146,52 @@ var Palette = {
     this.distinctColorIndex--;
   },
   quantizedSwatches() {
-    var color, population, red, green, blue, swatch;
-    for(var i = 0; i < this.distinctColorCount; i++){
-      color = this.distinctColors[i];
-      population = this.hist[color];
+    var color, population, red, green, blue, swatch, vbox, priorityArray = [];
 
-      red = this.quantizedRed(color);
-      green = this.quantizedGreen(color);
-      blue = this.quantizedBlue(color);
-      color = red << 2 * 8 | green << 8 | blue;
-      swatch = new Swatch(color, population);
-      this.swatchArray.push(swatch);
+    if(this.distinctColorIndex <= this.kMaxColorNum){
+      for(var i = 0; i < this.distinctColorCount; i++){
+        color = this.distinctColors[i];
+        population = this.hist[color];
+
+        red = PaletteColor.quantizedRed(color);
+        green = PaletteColor.quantizedGreen(color);
+        blue = PaletteColor.quantizedBlue(color);
+
+        color = red << 2 * 8 | green << 8 | blue;
+        swatch = new Swatch(color, population);
+        this.swatchArray.push(swatch);
+      }
+    } else {
+      console.log('超过了');
+      vbox = new VBox(0, this.distinctColorIndex, this.distinctColors);
+      priorityArray.push(vbox);
+      this.splitBoxes(priorityArray);
+      this.swatchArray = this.generateAverageColors(priorityArray);
     }
+
+    console.log(this.swatchArray);
+  },
+  splitBoxes(queue) {
+    //queue is a priority queue.
+    var vbox = null;
+
+    while (queue.length < this.kMaxColorNum) {
+      vbox = queue.shift();
+      if (vbox && vbox.canSplit()) {
+        // First split the box, and offer the result
+        [queue addVBox:[vbox splitBox]];
+        queue.push(vbox.splitBox());
+        // Then offer the box back
+        [queue addVBox:vbox];
+      }else{
+        console.log("All boxes split");
+        return;
+      }
+    }
+  },
+  generateAverageColors(array) {
+    var swatchs = [], vboxArray = [];
+
   },
   findMaxPopulation() {
     var max = 0;
@@ -159,7 +210,6 @@ var Palette = {
       target.normalizeWeights();
 
       swatch = this.getMaxScoredSwatchForTarget(target);
-      console.log('swatch', swatch);
       if (swatch) {
         colorModel = {
           imageColorString: swatch.getColorString(),
@@ -225,22 +275,83 @@ var Palette = {
         newValue = value >> (currentWidth - targetWidth);
     }
     return newValue & ((1 << targetWidth) - 1);
-  },
-  quantizedRed(color) {
-    var red =  (color >> (this.QUANTIZE_WORD_WIDTH_COLOR + this.QUANTIZE_WORD_WIDTH_COLOR)) & this.QUANTIZE_WORD_MASK_COLOR;
-    return red;
-  },
-  quantizedGreen(color) {
-    var green = (color >> this.QUANTIZE_WORD_WIDTH_COLOR) & this.QUANTIZE_WORD_MASK_COLOR;
-    return green;
-  },
-  quantizedBlue(color) {
-    var blue = color & this.QUANTIZE_WORD_MASK_COLOR;
-    return blue;
   }
 };
 
+//vbox模型
+function VBox(lowerIndex, upperIndex, colorArray) {
+  this._lowerIndex = lowderIndex;
+  this._upperIndex = upperIndex;
+  this._distinctColors = colorArray;
+  this._minRed = 0;
+  this._maxRed = 0;
+  this._minGreen = 0;
+  this._maxGreen = 0;
+  this._minBlue = 0;
+  this._maxBlue = 0;
+  this._population = 0;
+}
+VBox.prototype.fitBox = function() {
+  var minRed, minGreen, minBlue;
+  minRed = minGreen = minBlue = 32768;
+  var maxRed, maxGreen, maxBlue;
+  maxRed = maxGreen = maxBlue = 0;
+  var count = 0;
+  var color, r, g, b;
 
+  for (var i = this._lowerIndex; i <= this._upperIndex; i++) {
+    color = this._distinctColors[i];
+    count += hist[color];
+
+    r =  PaletteColor.quantizedRed(color);
+    g =  PaletteColor.quantizedGreen(color);
+    b =  PaletteColor.quantizedBlue(color);
+
+    if (r > maxRed) {
+      maxRed = r;
+    }
+    if (r < minRed) {
+      minRed = r;
+    }
+    if (g > maxGreen) {
+      maxGreen = g;
+    }
+    if (g < minGreen) {
+      minGreen = g;
+    }
+    if (b > maxBlue) {
+      maxBlue = b;
+    }
+    if (b < minBlue) {
+      minBlue = b;
+    }
+  }
+
+  this._minRed = minRed;
+  this._maxRed = maxRed;
+  this._minGreen = minGreen;
+  this._maxGreen = maxGreen;
+  this._minBlue = minBlue;
+  this._maxBlue = maxBlue;
+  this._population = count;
+}
+VBox.prototype.canSplit = funciton(){
+    if ((this._upperIndex - this._lowerIndex) <= 0){
+        return false;
+    }
+    return true;
+}
+VBox.prototype.splitBox = function(){
+  if(!this.canSplit()) return null;
+
+  var splitPoint = this.findSplitPoint();
+  var vbox = new VBox(splitPoint + 1, this._upperIndex, this._distinctColors);
+
+  this._upperIndex = splitPoint;
+  this.fitBox();
+
+  return vbox;
+}
 //swatch模型
 function Swatch(color, population){
   this._red = this.approximateRed(color);
