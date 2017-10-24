@@ -81,10 +81,11 @@ h1{
 ul{
   display: flex;
   flex-wrap: wrap;
+  flex-flow: column;
   color: #fff;
 
   li{
-    width: 60px;
+    width: 200px;
     padding: 5px;
     margin-right: 8px;
     margin-bottom: 8px;

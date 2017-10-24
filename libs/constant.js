@@ -1,0 +1,53 @@
+// vibrant-鲜艳度  muted-柔和度 saturation-饱和度
+var DEFAULT_NON_MODE_PALETTE = 0;//if you don't need the ColorDic(including modeKey-colorModel key-value)
+var VIBRANT_PALETTE = 1 << 0;
+var LIGHT_VIBRANT_PALETTE = 1 << 1;
+var DARK_VIBRANT_PALETTE = 1 << 2;
+var LIGHT_MUTED_PALETTE = 1 << 3;
+var MUTED_PALETTE = 1 << 4;
+var DARK_MUTED_PALETTE = 1 << 5;
+var ALL_MODE_PALETTE = 1 << 6;
+var QUANTIZE_WORD_WIDTH = 5;
+var kMaxColorNum = 16;
+
+
+var hist = [];
+var modes = [
+  VIBRANT_PALETTE, LIGHT_VIBRANT_PALETTE, DARK_VIBRANT_PALETTE,
+  LIGHT_MUTED_PALETTE, MUTED_PALETTE, DARK_MUTED_PALETTE
+];
+var curMode = ALL_MODE_PALETTE;
+
+var COMPONENT_RED = 0;
+var COMPONENT_GREEN = 1;
+var COMPONENT_BLUE = 2;
+
+
+
+var  TARGET_DARK_LUMA = 0.26;
+var  MAX_DARK_LUMA = 0.45;
+
+var  MIN_LIGHT_LUMA = 0.55;
+var  TARGET_LIGHT_LUMA = 0.74;
+
+var  MIN_NORMAL_LUMA = 0.3;
+var  TARGET_NORMAL_LUMA = 0.5;
+var  MAX_NORMAL_LUMA = 0.7;
+
+var  TARGET_MUTED_SATURATION = 0.3;
+var  MAX_MUTED_SATURATION = 0.4;
+
+var  TARGET_VIBRANT_SATURATION = 1.0;
+var  MIN_VIBRANT_SATURATION = 0.35;
+
+var  WEIGHT_SATURATION = 0.24;
+var  WEIGHT_LUMA = 0.52;
+var  WEIGHT_POPULATION = 0.24;
+
+var  INDEX_MIN = 0;
+var  INDEX_TARGET = 1;
+var  INDEX_MAX = 2;
+
+var  INDEX_WEIGHT_SAT = 0;
+var  INDEX_WEIGHT_LUMA = 1;
+var  INDEX_WEIGHT_POP = 2;

@@ -58,14 +58,22 @@ class Upload extends Component {
     var imgData = ctx.getImageData(0, 0, img.width, img.height);
 
     //使用web worker进行数据处理
-    var worker =new Worker("../../libs/dealdata.js");
-    worker.postMessage(imgData);     //向worker发送数据
-    worker.onmessage =function(evt){     //接收worker传过来的数据函数
-     console.log(evt.data);              //输出worker发送来的数据
-      that.setState({
-        analyData: evt.data
-      })
-    }
+    // var worker =new Worker("../../libs/dealdata.js");
+    // worker.postMessage(imgData);     //向worker发送数据
+    // worker.onmessage =function(evt){     //接收worker传过来的数据函数
+    //  console.log(evt.data);              //输出worker发送来的数据
+    //   that.setState({
+    //     analyData: evt.data
+    //   })
+    // }
+    console.log();
+    var PaletteObject = window.paletteObject;
+    var palette = new PaletteObject();
+    var resp = palette.init(imgData);
+
+    this.setState({
+      analyData: resp
+    });
   }
   render() {
     const { imgSrc, analyData } = this.state;
@@ -88,7 +96,8 @@ class Upload extends Component {
               <li
                 key={`color_item_${index}`}
                 style={{ backgroundColor: data.imageColorString }}>
-                {`${(data.percentage*100).toFixed(2)}%`}
+                <span>{`${data.mode}:${data.imageColorString}`}</span>
+                <span>{`${(data.percentage*100).toFixed(2)}%`}</span>
               </li>
             )
           }
