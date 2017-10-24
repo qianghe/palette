@@ -15,18 +15,20 @@ var LIGHT_MUTED_PALETTE = 1 << 3;
 var MUTED_PALETTE = 1 << 4;
 var DARK_MUTED_PALETTE = 1 << 5;
 var ALL_MODE_PALETTE = 1 << 6;
+var QUANTIZE_WORD_WIDTH = 5;
+var kMaxColorNum = 16;
 
 
-
+var hist = [];
 var modes = [
   VIBRANT_PALETTE, LIGHT_VIBRANT_PALETTE, DARK_VIBRANT_PALETTE,
   LIGHT_MUTED_PALETTE, MUTED_PALETTE, DARK_MUTED_PALETTE
 ];
-var curMode = MUTED_PALETTE;
+var curMode = ALL_MODE_PALETTE;
 
 var PaletteColor = {
-  QUANTIZE_WORD_WIDTH: 5,
-  QUANTIZE_WORD_MASK_COLOR: (1 >> 5) - 1,
+  QUANTIZE_WORD_WIDTH_COLOR: 5,
+  QUANTIZE_WORD_MASK_COLOR: (1 << 5) - 1,
   quantizedRed(color) {
     var red =  (color >> (this.QUANTIZE_WORD_WIDTH_COLOR + this.QUANTIZE_WORD_WIDTH_COLOR)) & this.QUANTIZE_WORD_MASK_COLOR;
     return red;
@@ -38,6 +40,18 @@ var PaletteColor = {
   quantizedBlue(color) {
     var blue = color & this.QUANTIZE_WORD_MASK_COLOR;
     return blue;
+  },
+  modifyWordWidthWithValue(value, currentWidth, targetWidth) {
+    var newValue;
+    if (targetWidth > currentWidth) {
+        // If we're approximating up in word width, we'll use scaling to approximate the
+        // new value
+      newValue = value * ((1 << targetWidth) - 1) / ((1 << currentWidth) - 1);
+    } else {
+        // Else, we will just shift and keep the MSB
+        newValue = value >> (currentWidth - targetWidth);
+    }
+    return newValue & ((1 << targetWidth) - 1);
   }
 };
 
@@ -46,8 +60,6 @@ var Palette = {
   rawData : null,
   width: 0,
   height: 0,
-  kMaxColorNum: 16,
-  hist: [],
   distinctColors: [],
   distinctColorCount: 0,
   distinctColorIndex: 0,
@@ -69,7 +81,9 @@ var Palette = {
     this.initDistanctColors();
     //量化参数swatch:color and population
     this.quantizedSwatches();
+    //找到最大的population值
     this.findMaxPopulation();
+    //找到目标swatch
     this.getSwatchForTarget();
 
     return this.finalDic;
@@ -85,6 +99,7 @@ var Palette = {
         vibrantTarget.initWithTargetMode();
         that.targetArray.push(vibrantTarget);
       });
+      console.log('lallaall',that.targetArray);
     } else {
       var modeName = 0;
       switch (curMode) {
@@ -120,78 +135,110 @@ var Palette = {
   },
   initHist() {
     var red, green, blue, quantizedColor;
+    // var time = 0;
     for (var pixelIndex = 0; pixelIndex < this.pixelCount; pixelIndex++) {
       red = this.rawData[pixelIndex * 4 + 0];
       green = this.rawData[pixelIndex * 4 + 1];
       blue = this.rawData[pixelIndex * 4 + 2];
 
-      red = this.modifyWordWidthWithValue(red, 8, this.QUANTIZE_WORD_WIDTH);
-      green = this.modifyWordWidthWithValue(green, 8, this.QUANTIZE_WORD_WIDTH);
-      blue = this.modifyWordWidthWithValue(blue, 8, this.QUANTIZE_WORD_WIDTH);
+      red = PaletteColor.modifyWordWidthWithValue(red, 8, QUANTIZE_WORD_WIDTH);
+      green = PaletteColor.modifyWordWidthWithValue(green, 8, QUANTIZE_WORD_WIDTH);
+      blue = PaletteColor.modifyWordWidthWithValue(blue, 8, QUANTIZE_WORD_WIDTH);
 
-      quantizedColor = red << 2 * this.QUANTIZE_WORD_WIDTH | green << this.QUANTIZE_WORD_WIDTH | blue;
-      this.hist[quantizedColor] = this.hist[quantizedColor] ? this.hist[quantizedColor] + 1 : 1;
+      quantizedColor = red << 2 * QUANTIZE_WORD_WIDTH | green << QUANTIZE_WORD_WIDTH | blue;
+      // if(quantizedColor === 21140 && !time){
+      //     time++;
+      //     .log(this.rawData[pixelIndex * 4 + 0], this.rawData[pixelIndex * 4 + 1], this.rawData[pixelIndex * 4 + 2]);
+      // }
+      hist[quantizedColor] = hist[quantizedColor] ? hist[quantizedColor] + 1 : 1;
     }
+    // console.log('hist', hist);
   },
   initDistanctColors(){
-    var length = this.hist.length;
+    var length = hist.length;
+
     for (var color = 0; color < length; color++){
-        var count = this.hist[color]
+        var count = hist[color]
         if (count > 0){
           this.distinctColorCount++;
           this.distinctColors[this.distinctColorIndex++] = color;
         }
     }
-
     this.distinctColorIndex--;
   },
   quantizedSwatches() {
-    var color, population, red, green, blue, swatch, vbox, priorityArray = [];
+    var color, population, red, green, blue, swatch, vbox;
 
-    if(this.distinctColorIndex <= this.kMaxColorNum){
+    if(this.distinctColorIndex <= kMaxColorNum){
       for(var i = 0; i < this.distinctColorCount; i++){
         color = this.distinctColors[i];
-        population = this.hist[color];
+        population = hist[color];
 
         red = PaletteColor.quantizedRed(color);
         green = PaletteColor.quantizedGreen(color);
         blue = PaletteColor.quantizedBlue(color);
 
+        red = PaletteColor.modifyWordWidthWithValue(red, QUANTIZE_WORD_WIDTH, 8);
+        green = PaletteColor.modifyWordWidthWithValue(green, QUANTIZE_WORD_WIDTH, 8);
+        blue = PaletteColor.modifyWordWidthWithValue(blue, QUANTIZE_WORD_WIDTH, 8);
+
         color = red << 2 * 8 | green << 8 | blue;
+
         swatch = new Swatch(color, population);
         this.swatchArray.push(swatch);
       }
     } else {
       console.log('超过了');
       vbox = new VBox(0, this.distinctColorIndex, this.distinctColors);
-      priorityArray.push(vbox);
+      var priorityArray = new PriorityBoxArray();
+      priorityArray.addVBox(vbox);
       this.splitBoxes(priorityArray);
       this.swatchArray = this.generateAverageColors(priorityArray);
     }
-
-    console.log(this.swatchArray);
+    // console.log(this.swatchArray);
   },
   splitBoxes(queue) {
     //queue is a priority queue.
     var vbox = null;
-
-    while (queue.length < this.kMaxColorNum) {
-      vbox = queue.shift();
+    while (queue.getLength() < kMaxColorNum) {
+      // vbox = queue.getTop();
+      vbox = queue.poll();
+      // console.log('vbox poll', vbox);
       if (vbox && vbox.canSplit()) {
         // First split the box, and offer the result
-        [queue addVBox:[vbox splitBox]];
-        queue.push(vbox.splitBox());
+        // queue.poll();
+        queue.addVBox(vbox.splitBox());
         // Then offer the box back
-        [queue addVBox:vbox];
+        queue.addVBox(vbox);
+        // console.log('vbox push', vbox);
+        //test
+        var test = queue.getVBoxArray();
+        // console.log('****************');
+        // console.log('queue', queue, queue.getLength());
+        // for(var i = 0;i<test.length;i++){
+        //   var testbox = test[i];
+        //   console.log('testbox:', testbox._lowerIndex, testbox._upperIndex);
+        // }
+        // console.log('****************');
       }else{
+        queue.addVBox(vbox);
         console.log("All boxes split");
         return;
       }
     }
   },
   generateAverageColors(array) {
-    var swatchs = [], vboxArray = [];
+    var swatchs = [];
+    var vboxArray = array.getVBoxArray();
+    var swatch;
 
+    for(var i =0 ; i < vboxArray.length ; i++){
+      swatch = vboxArray[i].getAverageColor();
+      if (swatch){
+        swatchs.push(swatch);
+      }
+    }
+    return swatchs;
   },
   findMaxPopulation() {
     var max = 0;
@@ -221,7 +268,6 @@ var Palette = {
         }
       }
     }
-
     console.log('last one', this.finalDic);
   },
   getMaxScoredSwatchForTarget(target) {
@@ -263,24 +309,74 @@ var Palette = {
     }
 
     return saturationScore + luminanceScore + populationScore;
-  },
-  modifyWordWidthWithValue(value, currentWidth, targetWidth) {
-    var newValue;
-    if (targetWidth > currentWidth) {
-        // If we're approximating up in word width, we'll use scaling to approximate the
-        // new value
-        newValue = value * ((1 << targetWidth) - 1) / ((1 << currentWidth) - 1);
-    } else {
-        // Else, we will just shift and keep the MSB
-        newValue = value >> (currentWidth - targetWidth);
-    }
-    return newValue & ((1 << targetWidth) - 1);
   }
 };
 
+//vbox队列PriorityBoxArray
+function PriorityBoxArray(){
+  this._vboxArray = [];
+}
+PriorityBoxArray.prototype.getLength = function() {
+  return this._vboxArray.length;
+}
+PriorityBoxArray.prototype.addVBox = function(box){
+  //
+  // if (Object.prototype.toString(box) !== '[Object Object]'){
+  //     return;
+  // }
+  if (this._vboxArray.length <= 0){
+    this._vboxArray.push(box);
+    return;
+  }
+  var nowBox;
+
+  for (var i = 0 ; i < this._vboxArray.length ; i++){
+      nowBox = this._vboxArray[i];
+
+      if (box.getVolume() > nowBox.getVolume()){
+          this._vboxArray.splice(i, 0, box);
+          if (this._vboxArray.length > kMaxColorNum){
+              this._vboxArray.pop();
+          }
+          return;
+      }
+
+      if ((i == this._vboxArray.length - 1) && this._vboxArray.length < kMaxColorNum){
+          this._vboxArray.push(box);
+          return;
+      }
+  }
+}
+PriorityBoxArray.prototype.getTop = function() {
+  if (this._vboxArray.length <= 0){
+      return null;
+  }
+
+  return this._vboxArray[0];
+}
+PriorityBoxArray.prototype.poll = function(){
+    // if (this._vboxArray.length <= 0){
+    //     return null;
+    // }
+    // this._vboxArray.shift();
+    if (this._vboxArray.length <= 0){
+        return null;
+    }
+    var headObject = this._vboxArray[0];
+    this._vboxArray.shift();
+    return headObject;
+}
+
+PriorityBoxArray.prototype.getVBoxArray = function(){
+  return this._vboxArray;
+}
+
+var COMPONENT_RED = 0;
+var COMPONENT_GREEN = 1;
+var COMPONENT_BLUE = 2;
 //vbox模型
 function VBox(lowerIndex, upperIndex, colorArray) {
-  this._lowerIndex = lowderIndex;
+  this._lowerIndex = lowerIndex;
   this._upperIndex = upperIndex;
   this._distinctColors = colorArray;
   this._minRed = 0;
@@ -290,6 +386,7 @@ function VBox(lowerIndex, upperIndex, colorArray) {
   this._minBlue = 0;
   this._maxBlue = 0;
   this._population = 0;
+  this.fitBox();
 }
 VBox.prototype.fitBox = function() {
   var minRed, minGreen, minBlue;
@@ -301,11 +398,11 @@ VBox.prototype.fitBox = function() {
 
   for (var i = this._lowerIndex; i <= this._upperIndex; i++) {
     color = this._distinctColors[i];
-    count += hist[color];
+    count = count + hist[color];
 
-    r =  PaletteColor.quantizedRed(color);
-    g =  PaletteColor.quantizedGreen(color);
-    b =  PaletteColor.quantizedBlue(color);
+    r = PaletteColor.quantizedRed(color);
+    g = PaletteColor.quantizedGreen(color);
+    b = PaletteColor.quantizedBlue(color);
 
     if (r > maxRed) {
       maxRed = r;
@@ -335,7 +432,7 @@ VBox.prototype.fitBox = function() {
   this._maxBlue = maxBlue;
   this._population = count;
 }
-VBox.prototype.canSplit = funciton(){
+VBox.prototype.canSplit = function(){
     if ((this._upperIndex - this._lowerIndex) <= 0){
         return false;
     }
@@ -352,8 +449,143 @@ VBox.prototype.splitBox = function(){
 
   return vbox;
 }
+VBox.prototype.findSplitPoint = function(){
+  var longestDimesion = this.getLongestColorDimension();
+  this.modifySignificantOctetWithDismension(longestDimesion, this._lowerIndex, this._upperIndex);
+  this.sortColorArray();
+  this.modifySignificantOctetWithDismension(longestDimesion, this._lowerIndex, this._upperIndex);
+
+  var midPoint = this._population / 2;
+  var population = 0;
+  for (var i = this._lowerIndex, count = 0; i <= this._upperIndex ; i++)  {
+      population = hist[this._distinctColors[i]];
+      count += population;
+      if (count >= midPoint) {
+          return i !== this._lowerIndex ? (i-1) : i;
+      }
+  }
+  return this._lowerIndex;
+}
+VBox.prototype.getLongestColorDimension = function() {
+  var redLength = this._maxRed - this._minRed;
+  var greenLength = this._maxGreen - this._minGreen;
+  var blueLength = this._maxBlue - this._minBlue;
+
+  if (redLength >= greenLength && redLength >= blueLength) {
+    return COMPONENT_RED;
+  } else if (greenLength >= redLength && greenLength >= blueLength) {
+    return COMPONENT_GREEN;
+  } else {
+    return COMPONENT_BLUE;
+  }
+}
+VBox.prototype.modifySignificantOctetWithDismension = function(dimension, lower, upper) {
+  switch (dimension) {
+    case COMPONENT_RED:
+      // Already in RGB, no need to do anything
+      break;
+    case COMPONENT_GREEN:
+      // We need to do a RGB to GRB swap, or vice-versa
+      for (var i = lower; i <= upper; i++) {
+          var color = this._distinctColors[i];
+          var newColor = PaletteColor.quantizedGreen(color) << (QUANTIZE_WORD_WIDTH + QUANTIZE_WORD_WIDTH) |
+            PaletteColor.quantizedRed(color)  << QUANTIZE_WORD_WIDTH | PaletteColor.quantizedBlue(color);
+          this._distinctColors[i] = newColor;
+      }
+      break;
+    case COMPONENT_BLUE:
+      // We need to do a RGB to BGR swap, or vice-versa
+      for (var i = lower; i <= upper; i++) {
+          var color = this._distinctColors[i];
+          var newColor =  PaletteColor.quantizedBlue(color) << (QUANTIZE_WORD_WIDTH + QUANTIZE_WORD_WIDTH) |
+            PaletteColor.quantizedGreen(color)  << QUANTIZE_WORD_WIDTH |
+            PaletteColor.quantizedRed(color);
+          this._distinctColors[i] = newColor;
+      }
+      break;
+    }
+}
+VBox.prototype.sortColorArray = function(){
+    // Now sort... Arrays.sort uses a exclusive toIndex so we need to add 1
+
+    var sortCount = (this._upperIndex - this._lowerIndex) + 1;
+    var sortArray = [];
+    var sortIndex = 0;
+
+    for (var index = this._lowerIndex; index<= this._upperIndex; index++){
+        sortArray[sortIndex] = this._distinctColors[index];
+        sortIndex++;
+    }
+
+    var arrayLength = sortIndex;
+    var isSorted = true, temp = null;
+
+    //bubble sort冒泡排序
+    for(var i = 0; i < arrayLength - 1; i++)
+    {
+        for(var j=0; j< arrayLength- 1 - i; j++)
+        {
+            if(sortArray[j] > sortArray[j+1])
+            {
+                isSorted = false;
+                temp = sortArray[j];
+                sortArray[j] = sortArray[j+1];
+                sortArray[j + 1]=temp;
+            }
+        }
+        if(isSorted)
+            break;
+    }
+
+    sortIndex = 0;
+    for (var index = this._lowerIndex; index <= this._upperIndex; index++){
+        this._distinctColors[index] = sortArray[sortIndex];
+        sortIndex++;
+    }
+}
+VBox.prototype.getVolume = function() {
+  var volume = (this._maxRed - this._minRed + 1) * (this._maxGreen - this._minGreen + 1) * (this._maxBlue - this._minBlue + 1);
+  return volume;
+}
+VBox.prototype.getAverageColor = function() {
+  var redSum = 0;
+  var greenSum = 0;
+  var blueSum = 0;
+  var totalPopulation = 0;
+
+  for (var i = this._lowerIndex; i <= this._upperIndex; i++) {
+      var color = this._distinctColors[i];
+      var colorPopulation = hist[color];
+
+      totalPopulation += colorPopulation;
+
+      redSum += colorPopulation * PaletteColor.quantizedRed(color);
+      greenSum += colorPopulation * PaletteColor.quantizedGreen(color);
+      blueSum += colorPopulation * PaletteColor.quantizedBlue(color);
+  }
+
+  //in case of totalPopulation equals to 0
+  if (totalPopulation <= 0){
+      return null;
+  }
+
+  var redMean = redSum / totalPopulation;
+  var greenMean = greenSum / totalPopulation;
+  var blueMean = blueSum / totalPopulation;
+
+  redMean = PaletteColor.modifyWordWidthWithValue(redMean, QUANTIZE_WORD_WIDTH, 8);
+  greenMean = PaletteColor.modifyWordWidthWithValue(greenMean, QUANTIZE_WORD_WIDTH, 8);
+  blueMean = PaletteColor.modifyWordWidthWithValue(blueMean, QUANTIZE_WORD_WIDTH,8);
+
+  var rgb888Color = redMean << 2 * 8 | greenMean << 8 | blueMean;
+  var swatch = new Swatch(rgb888Color, totalPopulation);
+
+  return swatch;
+}
+
 //swatch模型
 function Swatch(color, population){
+  console.log('new Swatch', population);
   this._red = this.approximateRed(color);
   this._green = this.approximateGreen(color);
   this._blue = this.approximateBlue(color);
@@ -364,6 +596,7 @@ Swatch.prototype.getPopulation = function(){
   return this._population;
 }
 Swatch.prototype.getColorString = function(){
+  console.log('getColorString', this._red, this._green, this._blue);
   return "#" + this._red.toString(16) + this._green.toString(16) + this._blue.toString(16);
 }
 Swatch.prototype.approximateRed = function(color){
@@ -467,7 +700,7 @@ PaletteTarget.prototype.initWithTargetMode = function(){
   this._saturationTargets.push(0.5);
   this._saturationTargets.push(1.0);
 
-  switch(this.mode) {
+  switch(this._mode) {
     case LIGHT_VIBRANT_PALETTE:
         this.setDefaultLightLuma();
         this.setDefaultVibrantSaturation();
