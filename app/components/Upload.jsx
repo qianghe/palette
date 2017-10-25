@@ -1,4 +1,5 @@
 import React, { Component } from 'react'
+import Palette from '../../libs/Palette';
 import './upload.scss'
 
 class Upload extends Component {
@@ -66,10 +67,9 @@ class Upload extends Component {
     //     analyData: evt.data
     //   })
     // }
-    console.log();
-    var PaletteObject = window.paletteObject;
-    var palette = new PaletteObject();
-    var resp = palette.init(imgData);
+    // var PaletteObject = window.paletteObject;
+    var palette = new Palette();
+    var resp = palette.analysis(imgData);
 
     this.setState({
       analyData: resp

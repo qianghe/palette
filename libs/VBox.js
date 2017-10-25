@@ -1,5 +1,10 @@
+import CONFIGS from './constant.js';
+import Palette from './Palette.js';
+import PaletteColor from './PaletteColor.js';
+import Swatch from './Swatch';
+import Hist from './Hist';
 //vbox模型
-function VBox(lowerIndex, upperIndex, colorArray) {
+const VBox = function(lowerIndex, upperIndex, colorArray) {
   this._lowerIndex = lowerIndex;
   this._upperIndex = upperIndex;
   this._distinctColors = colorArray;
@@ -13,14 +18,14 @@ function VBox(lowerIndex, upperIndex, colorArray) {
   this.fitBox();
 }
 VBox.prototype.fitBox = function() {
-  var minRed, minGreen, minBlue;
-  minRed = minGreen = minBlue = 32768;
-  var maxRed, maxGreen, maxBlue;
-  maxRed = maxGreen = maxBlue = 0;
-  var count = 0;
-  var color, r, g, b;
+  let minRed, minGreen, minBlue, maxRed, maxGreen, maxBlue;
+  let count = 0,color, r, g, b;
+  const hist = Hist.getHist();
 
-  for (var i = this._lowerIndex; i <= this._upperIndex; i++) {
+  minRed = minGreen = minBlue = 32768;
+  maxRed = maxGreen = maxBlue = 0;
+
+  for (let i = this._lowerIndex; i <= this._upperIndex; i++) {
     color = this._distinctColors[i];
     count = count + hist[color];
 
@@ -65,8 +70,8 @@ VBox.prototype.canSplit = function(){
 VBox.prototype.splitBox = function(){
   if(!this.canSplit()) return null;
 
-  var splitPoint = this.findSplitPoint();
-  var vbox = new VBox(splitPoint + 1, this._upperIndex, this._distinctColors);
+  const splitPoint = this.findSplitPoint();
+  const vbox = new VBox(splitPoint + 1, this._upperIndex, this._distinctColors);
 
   this._upperIndex = splitPoint;
   this.fitBox();
@@ -74,14 +79,15 @@ VBox.prototype.splitBox = function(){
   return vbox;
 }
 VBox.prototype.findSplitPoint = function(){
-  var longestDimesion = this.getLongestColorDimension();
+  const longestDimesion = this.getLongestColorDimension();
   this.modifySignificantOctetWithDismension(longestDimesion, this._lowerIndex, this._upperIndex);
   this.sortColorArray();
   this.modifySignificantOctetWithDismension(longestDimesion, this._lowerIndex, this._upperIndex);
 
-  var midPoint = this._population / 2;
-  var population = 0;
-  for (var i = this._lowerIndex, count = 0; i <= this._upperIndex ; i++)  {
+  const midPoint = this._population / 2;
+  let population = 0, hist = Hist.getHist();
+
+  for (let i = this._lowerIndex, count = 0; i <= this._upperIndex ; i++)  {
       population = hist[this._distinctColors[i]];
       count += population;
       if (count >= midPoint) {
@@ -91,38 +97,40 @@ VBox.prototype.findSplitPoint = function(){
   return this._lowerIndex;
 }
 VBox.prototype.getLongestColorDimension = function() {
-  var redLength = this._maxRed - this._minRed;
-  var greenLength = this._maxGreen - this._minGreen;
-  var blueLength = this._maxBlue - this._minBlue;
+  const redLength = this._maxRed - this._minRed;
+  const greenLength = this._maxGreen - this._minGreen;
+  const blueLength = this._maxBlue - this._minBlue;
 
   if (redLength >= greenLength && redLength >= blueLength) {
-    return COMPONENT_RED;
+    return CONFIGS.COMPONENT_RED;
   } else if (greenLength >= redLength && greenLength >= blueLength) {
-    return COMPONENT_GREEN;
+    return CONFIGS.COMPONENT_GREEN;
   } else {
-    return COMPONENT_BLUE;
+    return CONFIGS.COMPONENT_BLUE;
   }
 }
 VBox.prototype.modifySignificantOctetWithDismension = function(dimension, lower, upper) {
+  let color, newColor;
+
   switch (dimension) {
-    case COMPONENT_RED:
+    case CONFIGS.COMPONENT_RED:
       // Already in RGB, no need to do anything
       break;
-    case COMPONENT_GREEN:
+    case CONFIGS.COMPONENT_GREEN:
       // We need to do a RGB to GRB swap, or vice-versa
-      for (var i = lower; i <= upper; i++) {
-          var color = this._distinctColors[i];
-          var newColor = PaletteColor.quantizedGreen(color) << (QUANTIZE_WORD_WIDTH + QUANTIZE_WORD_WIDTH) |
-            PaletteColor.quantizedRed(color)  << QUANTIZE_WORD_WIDTH | PaletteColor.quantizedBlue(color);
+      for (let i = lower; i <= upper; i++) {
+          color = this._distinctColors[i];
+          newColor = PaletteColor.quantizedGreen(color) << (CONFIGS.QUANTIZE_WORD_WIDTH + CONFIGS.QUANTIZE_WORD_WIDTH) |
+            PaletteColor.quantizedRed(color)  << CONFIGS.QUANTIZE_WORD_WIDTH | PaletteColor.quantizedBlue(color);
           this._distinctColors[i] = newColor;
       }
       break;
-    case COMPONENT_BLUE:
+    case CONFIGS.COMPONENT_BLUE:
       // We need to do a RGB to BGR swap, or vice-versa
       for (var i = lower; i <= upper; i++) {
-          var color = this._distinctColors[i];
-          var newColor =  PaletteColor.quantizedBlue(color) << (QUANTIZE_WORD_WIDTH + QUANTIZE_WORD_WIDTH) |
-            PaletteColor.quantizedGreen(color)  << QUANTIZE_WORD_WIDTH |
+          color = this._distinctColors[i];
+          newColor =  PaletteColor.quantizedBlue(color) << (CONFIGS.QUANTIZE_WORD_WIDTH + CONFIGS.QUANTIZE_WORD_WIDTH) |
+            PaletteColor.quantizedGreen(color)  << CONFIGS.QUANTIZE_WORD_WIDTH |
             PaletteColor.quantizedRed(color);
           this._distinctColors[i] = newColor;
       }
@@ -131,23 +139,22 @@ VBox.prototype.modifySignificantOctetWithDismension = function(dimension, lower,
 }
 VBox.prototype.sortColorArray = function(){
     // Now sort... Arrays.sort uses a exclusive toIndex so we need to add 1
+    const sortCount = (this._upperIndex - this._lowerIndex) + 1;
+    const sortArray = [];
+    let sortIndex = 0;
 
-    var sortCount = (this._upperIndex - this._lowerIndex) + 1;
-    var sortArray = [];
-    var sortIndex = 0;
-
-    for (var index = this._lowerIndex; index<= this._upperIndex; index++){
+    for (let index = this._lowerIndex; index<= this._upperIndex; index++){
         sortArray[sortIndex] = this._distinctColors[index];
         sortIndex++;
     }
 
-    var arrayLength = sortIndex;
-    var isSorted = true, temp = null;
+    const arrayLength = sortIndex;
+    let isSorted = true, temp = null;
 
     //bubble sort冒泡排序
-    for(var i = 0; i < arrayLength - 1; i++)
+    for(let i = 0; i < arrayLength - 1; i++)
     {
-        for(var j=0; j< arrayLength- 1 - i; j++)
+        for(let j=0; j< arrayLength- 1 - i; j++)
         {
             if(sortArray[j] > sortArray[j+1])
             {
@@ -168,18 +175,16 @@ VBox.prototype.sortColorArray = function(){
     }
 }
 VBox.prototype.getVolume = function() {
-  var volume = (this._maxRed - this._minRed + 1) * (this._maxGreen - this._minGreen + 1) * (this._maxBlue - this._minBlue + 1);
-  return volume;
+  return (this._maxRed - this._minRed + 1) * (this._maxGreen - this._minGreen + 1) * (this._maxBlue - this._minBlue + 1);
 }
 VBox.prototype.getAverageColor = function() {
-  var redSum = 0;
-  var greenSum = 0;
-  var blueSum = 0;
-  var totalPopulation = 0;
+  let redSum = 0, greenSum = 0, blueSum = 0,totalPopulation = 0;
+  let color, colorPopulation;
+  const hist = Hist.getHist();
 
-  for (var i = this._lowerIndex; i <= this._upperIndex; i++) {
-      var color = this._distinctColors[i];
-      var colorPopulation = hist[color];
+  for (let i = this._lowerIndex; i <= this._upperIndex; i++) {
+      color = this._distinctColors[i];
+      colorPopulation = hist[color];
 
       totalPopulation += colorPopulation;
 
@@ -193,16 +198,18 @@ VBox.prototype.getAverageColor = function() {
       return null;
   }
 
-  var redMean = redSum / totalPopulation;
-  var greenMean = greenSum / totalPopulation;
-  var blueMean = blueSum / totalPopulation;
+  let redMean = redSum / totalPopulation;
+  let greenMean = greenSum / totalPopulation;
+  let blueMean = blueSum / totalPopulation;
 
-  redMean = PaletteColor.modifyWordWidthWithValue(redMean, QUANTIZE_WORD_WIDTH, 8);
-  greenMean = PaletteColor.modifyWordWidthWithValue(greenMean, QUANTIZE_WORD_WIDTH, 8);
-  blueMean = PaletteColor.modifyWordWidthWithValue(blueMean, QUANTIZE_WORD_WIDTH,8);
+  redMean = PaletteColor.modifyWordWidthWithValue(redMean, CONFIGS.QUANTIZE_WORD_WIDTH, 8);
+  greenMean = PaletteColor.modifyWordWidthWithValue(greenMean, CONFIGS.QUANTIZE_WORD_WIDTH, 8);
+  blueMean = PaletteColor.modifyWordWidthWithValue(blueMean, CONFIGS.QUANTIZE_WORD_WIDTH,8);
 
-  var rgb888Color = redMean << 2 * 8 | greenMean << 8 | blueMean;
-  var swatch = new Swatch(rgb888Color, totalPopulation);
+  const rgb888Color = redMean << 2 * 8 | greenMean << 8 | blueMean;
+  const swatch = new Swatch(rgb888Color, totalPopulation);
 
   return swatch;
 }
+
+export default VBox;

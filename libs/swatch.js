@@ -1,6 +1,5 @@
 //swatch模型
-function Swatch(color, population){
-  console.log('new Swatch', population);
+const Swatch = function(color, population){
   this._red = this.approximateRed(color);
   this._green = this.approximateGreen(color);
   this._blue = this.approximateBlue(color);
@@ -65,3 +64,5 @@ Swatch.prototype.getHsl = function() {
 
     return hsl;
 }
+
+export default Swatch;

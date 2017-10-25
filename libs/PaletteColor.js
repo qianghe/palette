@@ -1,4 +1,4 @@
-var PaletteColor = {
+const PaletteColor = {
   QUANTIZE_WORD_WIDTH_COLOR: 5,
   QUANTIZE_WORD_MASK_COLOR: (1 << 5) - 1,
   quantizedRed(color) {
@@ -26,3 +26,5 @@ var PaletteColor = {
     return newValue & ((1 << targetWidth) - 1);
   }
 };
+
+export default PaletteColor;
