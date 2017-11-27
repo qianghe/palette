@@ -2,7 +2,7 @@ import React from 'react';
 import { render } from 'react-dom';
 import { AppContainer } from 'react-hot-loader';
 // import Upload from './components/Upload';
-import Map from './components/Map';
+import Test from './components/Test';
 
 // const renderCom = App => {
 //   render(
@@ -21,7 +21,7 @@ import Map from './components/Map';
 
 render(
   <AppContainer>
-    <Map />
+    <Test />
   </AppContainer>,
   document.getElementById('app')
 );

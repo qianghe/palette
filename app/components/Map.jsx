@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-
+import { Input } from 'antd';
 let map = null;
 let geocoder = null;
 let marker = null;
@@ -9,13 +9,14 @@ class Map extends Component {
     super(props);
 
     this.state = {
-      location: '',
-      latLng: '',
-      city: '',
+      location: this.props.location || '',
+      latLng: this.props.latLng || '',
+      city: this.props.city || '',
     };
   }
   componentDidMount() {
-    const { defaultLatLng } = this.props;
+    const defaultLatLng = this.props.value.latLng;
+    console.log();
     let lat, lng, myLatlng, latLng;
 
     if (defaultLatLng) {
@@ -36,20 +37,34 @@ class Map extends Component {
     var ap = new qq.maps.place.Autocomplete(document.getElementById("qq-map-place"));
     var searchService = new qq.maps.SearchService({
       map : map,
-      complete: (result) => {
-        console.log(result);
+      complete: (results) => {
+        const pois = results.detail.pois;
+        const latlngBounds = new qq.maps.LatLngBounds();
+        if(!pois) return;
+
+        const poi = pois[0];
+        latlngBounds.extend(poi.latLng);
+        if (marker) marker.setMap(null);
+
+        marker = new qq.maps.Marker({
+            position: poi.latLng,
+            map: map
+          });
+        //调整地图视野
+        map.fitBounds(latlngBounds);
       },
     });
     //地理位置信息
     geocoder = new qq.maps.Geocoder({
         complete: (result) => {
           const { detail } = result;
-          console.log('detail', detail);
-          this.setState({
+          const obj = {
             location: detail.address,
-            city: detail.addressComponents.city || '无',
             latLng: `${detail.location.lat}, ${detail.location.lng}`,
-          });
+            city: detail.addressComponents.city || '无',
+          };
+          this.setState(obj);
+          this.props.onChange(obj);
         }
     });
     if (defaultLatLng) {
@@ -64,10 +79,10 @@ class Map extends Component {
     }
     //自动补全添加监听事件
     qq.maps.event.addListener(ap, "confirm", function(res){
-        console.log('confirm', res.value);
         const address = res.value;
         searchService.setPageCapacity(1);
         searchService.search(address);
+        if (marker) marker.setMap(null);
         //根据地址转换经纬度
         geocoder.getLocation(address);
     });
@@ -89,8 +104,14 @@ class Map extends Component {
     });
   }
   handleLocation = (e) => {
+    const { value } = e.target;
     this.setState({
-      location: e.target.value,
+      location: value,
+    });
+    this.props.onChange({
+      city: '',
+      latLng: '',
+      location: value,
     });
   }
   render() {
