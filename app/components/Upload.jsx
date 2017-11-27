@@ -81,6 +81,7 @@ class Upload extends Component {
     return (
       <div className="container">
         <h1>Palette Algorithm</h1>
+        <span className="test">12313</span>
         <section className="upload">
           <span style={{ display: imgSrc ? 'none' : 'block' }}>+</span>
           <div className="preview">
